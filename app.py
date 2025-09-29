@@ -4,17 +4,17 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 
-flask = Flask(__name__)
+app = Flask(__name__)
 
 # Gmail credentials (replace with your own or use environment variables)
 GMAIL_USERNAME = 'tkdhannouche@gmail.com'  # Substitua pelo seu email do Gmail
 GMAIL_PASSWORD = 'qshu knag rchb gseu'  # Substitua pela sua senha de app do Gmail
 
-@flask.route('/')
+@app.route('/')
 def home():
     return "Contact server is running"
 
-@flask.route('/contact', methods=['POST'])
+@app.route('/contact', methods=['POST'])
 def contact():
     nome = request.form.get('nome')
     telefone = request.form.get('telefone')
@@ -50,4 +50,4 @@ def contact():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 587))
-    flask.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port)
