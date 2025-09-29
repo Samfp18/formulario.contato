@@ -47,7 +47,8 @@ def contact():
 
     try:
         # Timeout de 10 segundos para evitar travamento
-        server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10)
+        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
+        server.starttls()
         server.login(GMAIL_USERNAME, GMAIL_PASSWORD)
         server.sendmail(GMAIL_USERNAME, GMAIL_USERNAME, msg.as_string())
         server.quit()
