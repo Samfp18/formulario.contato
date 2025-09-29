@@ -9,9 +9,11 @@ app = Flask(__name__)
 # Gmail credentials (replace with your own or use environment variables)
 GMAIL_USERNAME = 'tkdhannouche@gmail.com'  # Substitua pelo seu email do Gmail
 GMAIL_PASSWORD = 'qshu knag rchb gseu'  # Substitua pela sua senha de app do Gmail
+
 @app.route('/')
 def home():
     return "Contact server is running"
+
 @app.route('/contact', methods=['POST'])
 def contact():
     nome = request.form.get('nome')
@@ -43,9 +45,9 @@ def contact():
         server.sendmail(GMAIL_USERNAME, GMAIL_USERNAME, text)
         server.quit()
         return jsonify({'message': 'Mensagem enviada com sucesso!'}), 200
+    except Exception as e:
+        return jsonify({'error': f'Erro ao enviar a mensagem: {str(e)}'}), 500
 
- if __name__ == '__main__':
+if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
-
