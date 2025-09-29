@@ -9,7 +9,9 @@ app = Flask(__name__)
 # Gmail credentials (replace with your own or use environment variables)
 GMAIL_USERNAME = 'tkdhannouche@gmail.com'  # Substitua pelo seu email do Gmail
 GMAIL_PASSWORD = 'qshu knag rchb gseu'  # Substitua pela sua senha de app do Gmail
-
+@app.route('/')
+def home():
+    return "Contact server is running"
 @app.route('/contact', methods=['POST'])
 def contact():
     nome = request.form.get('nome')
