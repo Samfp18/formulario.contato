@@ -4,50 +4,59 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 
-flask = Flask(__name__)
+app = Flask(__name__)  # nome padrão para o Flask
 
-# Gmail credentials (replace with your own or use environment variables)
-GMAIL_USERNAME = 'tkdhannouche@gmail.com'  # Substitua pelo seu email do Gmail
-GMAIL_PASSWORD = 'qshu knag rchb gseu'  # Substitua pela sua senha de app do Gmail
+# === Configurações de e-mail ===
+# Defina estas variáveis no painel do Render como variáveis de ambiente
+GMAIL_USERNAME = os.environ.get("GMAIL_USERNAME", "tkdhannouche@gmail.com")
+GMAIL_PASSWORD = os.environ.get("GMAIL_PASSWORD", "sua_senha_de_app_aqui")
 
-@flask.route('/')
+@app.route("/")
 def home():
     return "Contact server is running"
 
-@flask.route('/contact', methods=['POST'])
+@app.route("/contact", methods=["POST"])
 def contact():
-    nome = request.form.get('nome')
-    telefone = request.form.get('telefone')
-    email = request.form.get('email')
-    local_treino = request.form.get('local_treino')
-    mensagem = request.form.get('mensagem')
+    nome = request.form.get("nome")
+    telefone = request.form.get("telefone")
+    email = request.form.get("email")
+    local_treino = request.form.get("local_treino")
+    mensagem = request.form.get("mensagem")
 
     # Validação básica
     if not all([nome, telefone, email, mensagem]):
-        return jsonify({'error': 'Os campos Nome, Telefone, Email e Mensagem são obrigatórios.'}), 400
+        return jsonify({"error": "Os campos Nome, Telefone, Email e Mensagem são obrigatórios."}), 400
 
-    if '@' not in email or '.' not in email:
-        return jsonify({'error': 'Email inválido.'}), 400
+    if "@" not in email or "." not in email:
+        return jsonify({"error": "Email inválido."}), 400
 
-    # Configurações do email
+    # Monta a mensagem
     msg = MIMEMultipart()
-    msg['From'] = GMAIL_USERNAME
-    msg['To'] = GMAIL_USERNAME  # Enviar para o seu Gmail
-    msg['Subject'] = "Nova mensagem de contato - Equipe Hannouche"
+    msg["From"] = GMAIL_USERNAME
+    msg["To"] = GMAIL_USERNAME
+    msg["Subject"] = "Nova mensagem de contato - Equipe Hannouche"
 
-    body = f"Nome: {nome}\nTelefone: {telefone}\nEmail: {email}\nLocal de Treino Desejado: {local_treino}\nMensagem: {mensagem}"
-    msg.attach(MIMEText(body, 'plain'))
+    body = (
+        f"Nome: {nome}\n"
+        f"Telefone: {telefone}\n"
+        f"Email: {email}\n"
+        f"Local de Treino Desejado: {local_treino}\n"
+        f"Mensagem: {mensagem}"
+    )
+    msg.attach(MIMEText(body, "plain"))
 
     try:
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        # Timeout de 10 segundos para evitar travamento
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10)
         server.login(GMAIL_USERNAME, GMAIL_PASSWORD)
-        text = msg.as_string()
-        server.sendmail(GMAIL_USERNAME, GMAIL_USERNAME, text)
+        server.sendmail(GMAIL_USERNAME, GMAIL_USERNAME, msg.as_string())
         server.quit()
-        return jsonify({'message': 'Mensagem enviada com sucesso!'}), 200
+        return jsonify({"message": "Mensagem enviada com sucesso!"}), 200
     except Exception as e:
-        return jsonify({'error': f'Erro ao enviar a mensagem: {str(e)}'}), 500
+        return jsonify({"error": f"Erro ao enviar a mensagem: {str(e)}"}), 500
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 587))
-    flask.run(host='0.0.0.0', port=port)
+
+# Executado apenas em ambiente local (Render usa gunicorn)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))  # fallback seguro
+    app.run(host="0.0.0.0", port=port)
