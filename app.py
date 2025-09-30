@@ -1,72 +1,45 @@
 from flask import Flask, request, jsonify
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import os
-import requests
 
 app = Flask(__name__)
 
-# === Configurações ===
-SENDGRID_API_KEY = os.environ.get("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")
-DESTINATARIO = os.environ.get("DESTINATARIO", "tkdhannouche@gmail.com")  
-REMETENTE = os.environ.get("REMETENTE", "tkd.hannoucheoficial.com.br")
+# Gmail credentials (replace with your own or use environment variables)
+GMAIL_USERNAME = 'tkdhannouche@gmail.com'  # Substitua pelo seu email do Gmail
+GMAIL_PASSWORD = 'qshu knag rchb gseu'  # Substitua pela sua senha de app do Gmail
 
-@app.route("/")
-def home():
-    return "Contact server with SendGrid is running"
-
-@app.route("/contact", methods=["POST"])
+@app.route('/contact', methods=['POST'])
 def contact():
-    nome = request.form.get("nome")
-    telefone = request.form.get("telefone")
-    email = request.form.get("email")
-    local_treino = request.form.get("local_treino")
-    mensagem = request.form.get("mensagem")
+    data = request.get_json()
+    name = data.get('name')
+    phone = data.get('phone')
+    email = data.get('email')
+    location = data.get('location')
+    message = data.get('message')
+    want_response = data.get('want_response')
 
-    # Validação básica
-    if not all([nome, telefone, email, mensagem]):
-        return jsonify({"error": "Os campos Nome, Telefone, Email e Mensagem são obrigatórios."}), 400
+    # Create message
+    msg = MIMEMultipart()
+    msg['From'] = GMAIL_USERNAME
+    msg['To'] = GMAIL_USERNAME  # Send to yourself or specify recipient
+    msg['Subject'] = 'Contact Form Submission'
 
-    if "@" not in email or "." not in email:
-        return jsonify({"error": "Email inválido."}), 400
+    body = f"Name: {name}\nPhone: {phone}\nEmail: {email}\nLocation: {location}\nMessage: {message}\nWant Response: {want_response}"
+    msg.attach(MIMEText(body, 'plain'))
 
-    # Monta corpo do e-mail
-    conteudo = (
-        f"Nome: {nome}\n"
-        f"Telefone: {telefone}\n"
-        f"Email: {email}\n"
-        f"Local de Treino Desejado: {local_treino}\n"
-        f"Mensagem: {mensagem}"
-    )
-
-    data = {
-        "personalizations": [
-            {
-                "to": [{"email": DESTINATARIO}],
-                "subject": "Nova mensagem de contato - Equipe Hannouche"
-            }
-        ],
-        "from": {"email": REMETENTE},
-        "content": [{"type": "text/plain", "value": conteudo}],
-    }
-
+    # Send email
     try:
-        r = requests.post(
-            "https://api.sendgrid.com/v3/mail/send",
-            headers={
-                "Authorization": f"Bearer {SENDGRID_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json=data
-        )
-
-        if r.status_code == 202:
-            return jsonify({"message": "Mensagem enviada com sucesso!"}), 200
-        else:
-            return jsonify({"error": "Falha ao enviar e-mail", "detalhe": r.text}), 500
-
+        server = smtplib.SMTP('smtp.gmail.com', 2525)
+        server.starttls()
+        server.login(GMAIL_USERNAME, GMAIL_PASSWORD)
+        text = msg.as_string()
+        server.sendmail(GMAIL_USERNAME, GMAIL_USERNAME, text)
+        server.quit()
+        return jsonify({'status': 'success'})
     except Exception as e:
-        return jsonify({"error": f"Erro ao enviar a mensagem: {str(e)}"}), 500
+        return jsonify({'status': 'error', 'message': str(e)})
 
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(debug=True)
