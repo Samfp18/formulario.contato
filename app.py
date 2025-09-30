@@ -12,34 +12,37 @@ GMAIL_PASSWORD = 'qshu knag rchb gseu'  # Substitua pela sua senha de app do Gma
 
 @app.route('/contact', methods=['POST'])
 def contact():
-    data = request.get_json()
-    name = data.get('name')
-    phone = data.get('phone')
-    email = data.get('email')
-    location = data.get('location')
-    message = data.get('message')
-    want_response = data.get('want_response')
+    nome = request.form.get('nome')
+    telefone = request.form.get('telefone')
+    email = request.form.get('email')
+    local_treino = request.form.get('local_treino')
+    mensagem = request.form.get('mensagem')
 
-    # Create message
+    # Validação básica
+    if not all([nome, telefone, email, mensagem]):
+        return jsonify({'error': 'Os campos Nome, Telefone, Email e Mensagem são obrigatórios.'}), 400
+
+    if '@' not in email or '.' not in email:
+        return jsonify({'error': 'Email inválido.'}), 400
+
+    # Configurações do email
     msg = MIMEMultipart()
     msg['From'] = GMAIL_USERNAME
-    msg['To'] = GMAIL_USERNAME  # Send to yourself or specify recipient
-    msg['Subject'] = 'Contact Form Submission'
+    msg['To'] = GMAIL_USERNAME  # Enviar para o seu Gmail
+    msg['Subject'] = "Nova mensagem de contato - Equipe Hannouche"
 
-    body = f"Name: {name}\nPhone: {phone}\nEmail: {email}\nLocation: {location}\nMessage: {message}\nWant Response: {want_response}"
+    body = f"Nome: {nome}\nTelefone: {telefone}\nEmail: {email}\nLocal de Treino Desejado: {local_treino}\nMensagem: {mensagem}"
     msg.attach(MIMEText(body, 'plain'))
 
-    # Send email
     try:
-        server = smtplib.SMTP('smtp.gmail.com', 2525)
-        server.starttls()
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 2525)
         server.login(GMAIL_USERNAME, GMAIL_PASSWORD)
         text = msg.as_string()
         server.sendmail(GMAIL_USERNAME, GMAIL_USERNAME, text)
         server.quit()
-        return jsonify({'status': 'success'})
+        return jsonify({'message': 'Mensagem enviada com sucesso!'}), 200
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)})
+        return jsonify({'error': f'Erro ao enviar a mensagem: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(port=5001, debug=True)
