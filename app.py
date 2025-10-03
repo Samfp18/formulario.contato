@@ -57,7 +57,7 @@ def enviar_email(conteudo, destinatario=None):
     service = build("gmail", "v1", credentials=creds)
 
     # destinatário definido no ambiente ou default
-    to_email = destinatario or os.environ.get("DESTINATARIO", "seuemail@gmail.com")
+    to_email = destinatario or os.environ.get("DESTINATARIO", "tkdhannouche@gmail.com")
 
     message = MIMEText(conteudo)
     message["to"] = to_email
