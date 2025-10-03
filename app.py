@@ -193,7 +193,7 @@ def contact():
             return jsonify({"error": "Credenciais inválidas. Acesse /authorize para configurar."}), 401
 
         message = MIMEText(body)
-        message["to"] = os.environ.get("DESTINATARIO", "seuemail@gmail.com")
+        message["to"] = os.environ.get("DESTINATARIO", "tkdhannouche@gmail.com")
         message["subject"] = "Nova mensagem de contato - Equipe Hannouche"
 
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
