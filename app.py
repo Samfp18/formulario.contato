@@ -10,33 +10,33 @@ from google.auth.transport.requests import Request
 
 app = Flask(__name__)
 
-# Arquivos de credenciais e token
+# Arquivo de credenciais do Google (baixado no Cloud Console)
 CLIENT_SECRETS_FILE = "credentials.json"
-TOKEN_FILE = "token.pkl"
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 
-# Função para carregar credenciais
+# 🔹 Carrega as credenciais a partir da variável de ambiente
 def load_credentials():
     creds = None
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, "rb") as token:
-            creds = pickle.load(token)
+    token_data = os.environ.get("GMAIL_TOKEN")
+    if token_data:
+        creds = pickle.loads(base64.b64decode(token_data))
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
-            with open(TOKEN_FILE, "wb") as token:
-                pickle.dump(creds, token)
+            os.environ["GMAIL_TOKEN"] = base64.b64encode(pickle.dumps(creds)).decode("utf-8")
     return creds
 
-# Rota para iniciar o processo de autorização
+# 🔹 Rota para iniciar a autorização
 @app.route("/authorize")
 def authorize():
     flow = Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES, redirect_uri=url_for("oauth2callback", _external=True)
     )
-    auth_url, state = flow.authorization_url(access_type="offline", include_granted_scopes="true")
+    auth_url, state = flow.authorization_url(
+        access_type="offline", include_granted_scopes="true", prompt="consent"
+    )
     return redirect(auth_url)
 
-# Callback do Google OAuth
+# 🔹 Callback do Google (gera o token)
 @app.route("/oauth2callback")
 def oauth2callback():
     flow = Flow.from_client_secrets_file(
@@ -44,19 +44,25 @@ def oauth2callback():
     )
     flow.fetch_token(authorization_response=request.url)
     creds = flow.credentials
-    with open(TOKEN_FILE, "wb") as token:
-        pickle.dump(creds, token)
-    return "Autorização concluída! Agora você pode enviar e-mails."
+    token_value = base64.b64encode(pickle.dumps(creds)).decode("utf-8")
 
-# Função para enviar e-mail via Gmail API
+    # Salva em memória (vale até o container reiniciar)
+    os.environ["GMAIL_TOKEN"] = token_value
+
+    # Imprime no log para você copiar e salvar no Render → Environment Variables
+    print("==== COPIE O TOKEN ABAIXO E SALVE NO RENDER COMO GMAIL_TOKEN ====")
+    print(token_value)
+    print("=================================================================")
+
+    return "Autorização concluída! Agora copie o token do log e salve no Render."
+
+# 🔹 Função que envia o e-mail via Gmail API
 def enviar_email(conteudo, destinatario=None):
     creds = load_credentials()
     if not creds:
         return {"error": "Credenciais inválidas. Acesse /authorize para configurar."}
 
     service = build("gmail", "v1", credentials=creds)
-
-    # destinatário definido no ambiente ou default
     to_email = destinatario or os.environ.get("DESTINATARIO", "tkdhannouche@gmail.com")
 
     message = MIMEText(conteudo)
@@ -64,36 +70,15 @@ def enviar_email(conteudo, destinatario=None):
     message["subject"] = "Nova mensagem do formulário"
 
     raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
-    send_message = {"raw": raw_message}
-
-    service.users().messages().send(userId="me", body=send_message).execute()
+    service.users().messages().send(userId="me", body={"raw": raw_message}).execute()
     return {"success": True}
 
-# Rota para receber formulário ou JSON
+# 🔹 Endpoint para receber dados do formulário ou JSON
 @app.route("/contact", methods=["POST"])
 def contact():
-    data = {}
-    if request.is_json:  # caso seja JSON (via API ou Postman)
-        data = request.get_json()
-    else:  # caso venha de um formulário HTML
-        data = request.form.to_dict()
-
-    nome = data.get("nome", "")
-    telefone = data.get("telefone", "")
-    email = data.get("email", "")
-    local = data.get("local", "")
-    mensagem = data.get("mensagem", "")
-
-    conteudo = f"""
-    Nome: {nome}
-    Telefone: {telefone}
-    Email: {email}
-    Local de Treino: {local}
-    Mensagem: {mensagem}
-    """
-
-    resultado = enviar_email(conteudo)
-    return jsonify(resultado)
+    data = request.form.to_dict() if not request.is_json else request.get_json()
+    conteudo = "\n".join([f"{k.capitalize()}: {v}" for k, v in data.items()])
+    return jsonify(enviar_email(conteudo))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
